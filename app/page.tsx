@@ -12,15 +12,14 @@ export default function Home() {
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle>Keetlo Smart Text Editor</CardTitle>
-          <CardDescription>A beautiful and user-friendly TipTap editor with improved UI/UX</CardDescription>
+          <CardDescription>A beautiful and user-friendly editor created by using the package of TipTap with improved UI/UX</CardDescription>
         </CardHeader>
         <CardContent>
           <KeetloSmartEditor
            defaultValue={content} 
-           onChange={setContent} 
-           placeholder="Start writing something amazing..." c
-           lassName={undefined} 
-            uploadUrl="/api/upload"
+           setValue={setContent} 
+           placeholder="Start writing something amazing..." 
+           limitRows={10}
            />
           <div className="mt-8">
             <h3 className="text-lg font-medium mb-2">Editor Output:</h3>

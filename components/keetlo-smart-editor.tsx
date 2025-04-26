@@ -1,9 +1,7 @@
 "use client";
-
 import { useRef, useState, useEffect } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import TextStyle from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
@@ -24,6 +22,7 @@ import { lowlight } from "lowlight/lib/core";
 import javascript from "highlight.js/lib/languages/javascript";
 import typescript from "highlight.js/lib/languages/typescript";
 import html from "highlight.js/lib/languages/xml";
+import { Image as TiptapImage } from "@tiptap/extension-image";
 
 // Register languages
 lowlight.registerLanguage("javascript", javascript);
@@ -115,6 +114,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Extension } from "@tiptap/core";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+const grammarHighlightKey = new PluginKey("grammarHighlight");
 
 // Custom extension for font size
 const FontSize = Extension.create({
@@ -409,7 +411,22 @@ const highlightColors = [
 const templates = [
   {
     name: "Blank Document",
-    content: "<p>Start writing your document here...</p>",
+    content: `
+      <h1>Document Title</h1>
+      <p><em>Created on ${new Date().toLocaleDateString()}</em></p>
+      <p>Start writing your content here...</p>
+      <p>&nbsp;</p>
+      <p><strong>Introduction:</strong></p>
+      <p>Write an engaging introduction to your document here.</p>
+      <p>&nbsp;</p>
+      <p><strong>Main Content:</strong></p>
+      <p>Use this section to describe your ideas, details, or whatever you want to document.</p>
+      <p>&nbsp;</p>
+      <p><strong>Conclusion:</strong></p>
+      <p>Summarize your points and end the document here.</p>
+      <p>&nbsp;</p>
+      <p>— End of Document —</p>
+    `,
   },
   {
     name: "Business Letter",
@@ -501,12 +518,150 @@ const templates = [
   },
 ];
 
+// --- Define outside ---
+export const ImageDialog = ({
+  open,
+  onOpenChange,
+  imageUrl,
+  imageWidth,
+  imageHeight,
+  imageAlt,
+  imageTitle,
+  imageAlignment,
+  setImageWidth,
+  setImageHeight,
+  setImageAlt,
+  setImageTitle,
+  setImageAlignment,
+  insertCustomImage,
+  resetImageForm,
+}) => (
+  <Dialog
+    open={open}
+    onOpenChange={(o) => {
+      if (!o) resetImageForm();
+      onOpenChange(o);
+    }}
+  >
+    <DialogContent className="sm:max-w-md" forceMount>
+      <DialogHeader>
+        <DialogTitle>Insert Image</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4 py-2">
+        {imageUrl && (
+          <div className="flex justify-center mb-4 border rounded p-2">
+            <img
+              src={imageUrl || "/placeholder.svg"}
+              alt="Preview"
+              className="max-h-[200px] max-w-full object-contain"
+            />
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="width">Width</Label>
+            <Input
+              id="width"
+              placeholder="e.g., 300px"
+              value={imageWidth}
+              onChange={(e) => setImageWidth(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="height">Height</Label>
+            <Input
+              id="height"
+              placeholder="e.g., 200px"
+              value={imageHeight}
+              onChange={(e) => setImageHeight(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="alt">Alt Text</Label>
+          <Input
+            id="alt"
+            placeholder="Accessibility text"
+            value={imageAlt}
+            onChange={(e) => setImageAlt(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="title">Title</Label>
+          <Input
+            id="title"
+            placeholder="Image title"
+            value={imageTitle}
+            onChange={(e) => setImageTitle(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="alignment">Alignment</Label>
+          <Select value={imageAlignment} onValueChange={setImageAlignment}>
+            <SelectTrigger id="alignment">
+              <SelectValue placeholder="Select alignment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="left">Left</SelectItem>
+              <SelectItem value="center">Center</SelectItem>
+              <SelectItem value="right">Right</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={insertCustomImage}>Insert</Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
+{
+  /* Template Dialog */
+}
+export const TemplateDialog = ({
+  templateDialogOpen,
+  setTemplateDialogOpen,
+  templates,
+  applyTemplate,
+}) => (
+  <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+    <DialogContent className="sm:max-w-md" forceMount>
+      <DialogHeader>
+        <DialogTitle>Templates</DialogTitle>
+      </DialogHeader>
+      <div className="grid gap-4 py-4">
+        {templates.map((template, index) => (
+          <Card
+            key={index}
+            className="cursor-pointer hover:bg-accent"
+            onClick={() => applyTemplate(template)}
+          >
+            <CardContent className="p-4">
+              <h3 className="font-medium">{template.name}</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {template.name === "Blank Document"
+                  ? "Start with a clean document"
+                  : `Template for ${template.name.toLowerCase()}`}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
 export const KeetloSmartEditor = ({
   defaultValue = "",
-  onChange,
+  setValue = "",
   placeholder = "Start writing...",
-  className,
-  uploadUrl = "/api/upload",
+  className = "",
+  limitRows = 6,
 }) => {
   const fileInputRef = useRef(null);
   const [linkUrl, setLinkUrl] = useState("https://");
@@ -544,11 +699,119 @@ export const KeetloSmartEditor = ({
   const [imageAlt, setImageAlt] = useState("");
   const [imageTitle, setImageTitle] = useState("");
   const [imageAlignment, setImageAlignment] = useState("none");
+  const [loadingGrammar, setLoadingGrammar] = useState(false);
+  const [loadingCheck, setLoadingCheck] = useState(false);
+  const [loadingAutoFix, setLoadingAutoFix] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+
+  const [hoveredError, setHoveredError] = useState(null);
+  const [hoveredPosition, setHoveredPosition] = useState({ x: 0, y: 0 });
+  const grammarDecorationsRef = useRef<Decoration[]>([]);
+
+  useEffect(() => {
+    const body = document.body;
+
+    const observer = new MutationObserver(() => {
+      if (body.style.pointerEvents === "none") {
+        console.log("💥 Pointer events detected on body. Removing...");
+        body.style.pointerEvents = ""; // Remove it!
+      }
+    });
+
+    observer.observe(body, {
+      attributes: true,
+      attributeFilter: ["style"],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const CustomImage = TiptapImage.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        src: {
+          default: null,
+        },
+        alt: {
+          default: null,
+        },
+        title: {
+          default: null,
+        },
+        alignment: {
+          default: "none",
+          parseHTML: (element) => element.getAttribute("data-align") || "none",
+          renderHTML: (attributes) => {
+            if (!attributes.alignment || attributes.alignment === "none")
+              return {};
+            return { "data-align": attributes.alignment };
+          },
+        },
+        width: {
+          default: null,
+          parseHTML: (element) => element.getAttribute("width"),
+          renderHTML: (attributes) => {
+            if (!attributes.width) return {};
+            return { width: attributes.width };
+          },
+        },
+        height: {
+          default: null,
+          parseHTML: (element) => element.getAttribute("height"),
+          renderHTML: (attributes) => {
+            if (!attributes.height) return {};
+            return { height: attributes.height };
+          },
+        },
+      };
+    },
+  });
+
+  const grammarHighlightPlugin = (getDecorations) => {
+    console.log("working");
+    return new Plugin<DecorationSet>({
+      key: grammarHighlightKey,
+      state: {
+        init: () => DecorationSet.empty,
+        apply(tr, old) {
+          const meta = tr.getMeta(grammarHighlightKey);
+          if (meta) {
+            const decorations = getDecorations().map((match) =>
+              Decoration.inline(match.from, match.to, {
+                class: match.type.attrs.class,
+                title: match.type.attrs.title,
+              })
+            );
+            console.log(decorations);
+            return DecorationSet.create(tr.doc, decorations);
+          }
+          return old.map(tr.mapping, tr.doc);
+        },
+      },
+      props: {
+        decorations(state) {
+          return this.getState(state);
+        },
+      },
+    });
+  };
+
+  const GrammarHighlightExtension = Extension.create({
+    name: "grammarHighlight",
+
+    addProseMirrorPlugins() {
+      return [grammarHighlightPlugin(() => grammarDecorationsRef.current)];
+    },
+  });
 
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image.configure({
+      GrammarHighlightExtension,
+      CustomImage.configure({
         inline: false,
         allowBase64: true,
         HTMLAttributes: {
@@ -597,7 +860,7 @@ export const KeetloSmartEditor = ({
     content: defaultValue,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      onChange?.(html);
+      setValue?.(html);
       setSourceCode(html);
 
       // Update word and character count
@@ -650,6 +913,28 @@ export const KeetloSmartEditor = ({
   }, [editor]);
 
   useEffect(() => {
+    if (!editor) return;
+
+    const handleMouseMove = (e) => {
+      const target = e.target as HTMLElement;
+      if (target && target.classList.contains("grammar-error")) {
+        const rect = target.getBoundingClientRect();
+        setHoveredError(target.getAttribute("title"));
+        setHoveredPosition({ x: rect.left + rect.width / 2, y: rect.bottom });
+      } else {
+        setHoveredError(null);
+      }
+    };
+
+    const dom = editor.view.dom;
+    dom.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      dom.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [editor]);
+
+  useEffect(() => {
     if (isFullscreen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -660,6 +945,24 @@ export const KeetloSmartEditor = ({
       document.body.style.overflow = "";
     };
   }, [isFullscreen]);
+
+  const initializedRef = useRef(false);
+  const getTextFromHtml = (html) => {
+    if (typeof window !== "undefined") {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      return doc.body.textContent || "";
+    }
+    return "";
+  };
+  useEffect(() => {
+    if (defaultValue && !initializedRef.current) {
+      const plainText = getTextFromHtml(defaultValue);
+      setCharCount(plainText.length);
+      setWordCount(plainText.trim() ? plainText.trim().split(/\s+/).length : 0);
+      initializedRef.current = true; // ✅ mark as initialized
+    }
+  }, [defaultValue]);
 
   const updateElementPath = () => {
     if (!editor) return;
@@ -700,6 +1003,7 @@ export const KeetloSmartEditor = ({
       src: imageUrl,
       alt: imageAlt,
       title: imageTitle,
+      alignment: imageAlignment,
     };
 
     // Add optional attributes
@@ -708,11 +1012,6 @@ export const KeetloSmartEditor = ({
 
     // Insert the image
     editor.chain().focus().setImage(attrs).run();
-
-    // Apply alignment if needed
-    if (imageAlignment !== "none") {
-      editor.chain().focus().setTextAlign(imageAlignment).run();
-    }
 
     // Reset and close dialog
     setImageDialogOpen(false);
@@ -808,6 +1107,8 @@ export const KeetloSmartEditor = ({
     const html = editor.getHTML();
     const newHtml = html.replace(new RegExp(searchText, "gi"), replaceText);
     editor.commands.setContent(newHtml);
+    setSearchDialogOpen(false);
+    alert("✅ Replacements completed successfully!");
   };
 
   const insertTable = () => {
@@ -866,9 +1167,10 @@ export const KeetloSmartEditor = ({
   const applyTemplate = (template) => {
     if (!editor) return;
     editor.commands.setContent(template.content);
+    setValue(template.content);
     setTemplateDialogOpen(false);
   };
-  
+
   const handleSourceCodeChange = (e) => {
     setSourceCode(e.target.value);
   };
@@ -881,6 +1183,197 @@ export const KeetloSmartEditor = ({
 
   const toggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
+  };
+
+  const checkGrammar = async () => {
+    if (!editor) return;
+
+    const text = editor.getText();
+
+    if (!text.trim()) {
+      alert("⚡ No content to check!");
+      return;
+    }
+
+    try {
+      setLoadingGrammar(true);
+
+      const res = await fetch("https://api.languagetool.org/v2/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          text: text,
+          language: "en-US",
+        }),
+      });
+
+      const data = await res.json();
+
+      // Clear previous highlights
+      grammarDecorationsRef.current = [];
+
+      if (!data.matches.length) {
+        alert("✅ No grammar issues found!");
+        grammarDecorationsRef.current = []; // <--- Clear all highlights
+        editor.view.dispatch(
+          editor.state.tr.setMeta(grammarHighlightKey, true) // <--- Force decorations refresh
+        );
+        return;
+      }
+
+      grammarDecorationsRef.current = data.matches.map((match) => ({
+        from: match.offset,
+        to: match.offset + match.length,
+        type: {
+          attrs: {
+            class: "grammar-error",
+            title:
+              match.message +
+              (match.replacements.length
+                ? ` → Suggestions: ${match.replacements
+                    .map((r) => r.value)
+                    .join(", ")}`
+                : ""),
+          },
+          spec: {},
+        },
+      }));
+
+      editor.view.dispatch(editor.state.tr.setMeta(grammarHighlightKey, true));
+    } catch (error) {
+      console.error("Grammar check failed:", error);
+      alert("❌ Failed to check grammar. Please try again.");
+    } finally {
+      setLoadingGrammar(false);
+    }
+  };
+
+  const checkSpelling = async () => {
+    if (!editor) return;
+
+    const text = editor.getText();
+
+    if (!text.trim()) {
+      alert("⚡ No content to check!");
+      return;
+    }
+
+    try {
+      setLoadingCheck(true);
+
+      const res = await fetch("https://api.languagetool.org/v2/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          text: text,
+          language: "en-US",
+        }),
+      });
+
+      const data = await res.json();
+
+      // Clear previous highlights
+      grammarDecorationsRef.current = [];
+
+      const spellingErrors = data.matches.filter(
+        (match) => match.rule.issueType === "misspelling"
+      );
+
+      if (!spellingErrors.length) {
+        alert("✅ No spelling mistakes found!");
+        grammarDecorationsRef.current = [];
+        editor.view.dispatch(
+          editor.state.tr.setMeta(grammarHighlightKey, true)
+        );
+        return;
+      }
+
+      grammarDecorationsRef.current = spellingErrors.map((match) => ({
+        from: match.offset,
+        to: match.offset + match.length,
+        type: {
+          attrs: {
+            class: "grammar-error",
+            title:
+              match.message +
+              (match.replacements.length
+                ? ` → Suggestions: ${match.replacements
+                    .map((r) => r.value)
+                    .join(", ")}`
+                : ""),
+          },
+          spec: {},
+        },
+      }));
+
+      editor.view.dispatch(editor.state.tr.setMeta(grammarHighlightKey, true));
+    } catch (error) {
+      console.error("Spell check failed:", error);
+      alert("❌ Failed to check spelling. Please try again.");
+    } finally {
+      setLoadingCheck(false);
+    }
+  };
+
+  const autoFixErrors = async () => {
+    if (!editor) return;
+
+    const text = editor.getText();
+
+    if (!text.trim()) {
+      alert("⚡ No content to fix!");
+      return;
+    }
+
+    try {
+      setLoadingAutoFix(true); // ✅ Start Auto-Fix loading
+
+      const res = await fetch("https://api.languagetool.org/v2/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          text: text,
+          language: "en-US",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data.matches.length) {
+        alert("✅ No errors found!");
+        return;
+      }
+
+      const fixes = data.matches
+        .filter((match) => match.replacements.length > 0)
+        .sort((a, b) => b.offset - a.offset);
+
+      let updatedText = text;
+
+      fixes.forEach((match) => {
+        const replacement = match.replacements[0].value;
+        updatedText =
+          updatedText.slice(0, match.offset) +
+          replacement +
+          updatedText.slice(match.offset + match.length);
+      });
+
+      editor.commands.setContent(updatedText);
+      setSourceCode(updatedText);
+
+      alert(`✅ Auto-fixed ${fixes.length} issue(s)!`);
+    } catch (error) {
+      console.error("Auto-fix failed:", error);
+      alert("❌ Failed to auto-fix. Please try again.");
+    } finally {
+      setLoadingAutoFix(false); // ✅ Stop Auto-Fix loading
+    }
   };
 
   const handlePrint = () => {
@@ -945,97 +1438,6 @@ export const KeetloSmartEditor = ({
     URL.revokeObjectURL(url);
   };
 
-  const ImageDialog = () => (
-    <Dialog
-      open={imageDialogOpen}
-      onOpenChange={(open) => {
-        if (!open) resetImageForm();
-        setImageDialogOpen(open);
-      }}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Insert Image</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          {imageUrl && (
-            <div className="flex justify-center mb-4 border rounded p-2">
-              <img
-                src={imageUrl || "/placeholder.svg"}
-                alt="Preview"
-                className="max-h-[200px] max-w-full object-contain"
-              />
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="width">Width</Label>
-              <Input
-                id="width"
-                placeholder="e.g., 300px or 100%"
-                value={imageWidth}
-                onChange={(e) => setImageWidth(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="height">Height</Label>
-              <Input
-                id="height"
-                placeholder="e.g., 200px"
-                value={imageHeight}
-                onChange={(e) => setImageHeight(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="alt">Alt Text</Label>
-            <Input
-              id="alt"
-              placeholder="Image description for accessibility"
-              value={imageAlt}
-              onChange={(e) => setImageAlt(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              placeholder="Image title (shows on hover)"
-              value={imageTitle}
-              onChange={(e) => setImageTitle(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="alignment">Alignment</Label>
-            <Select value={imageAlignment} onValueChange={setImageAlignment}>
-              <SelectTrigger id="alignment">
-                <SelectValue placeholder="Select alignment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                <SelectItem value="left">Left</SelectItem>
-                <SelectItem value="center">Center</SelectItem>
-                <SelectItem value="right">Right</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setImageDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="button" onClick={insertCustomImage}>
-              Insert Image
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
   if (!editor) return null;
 
   return (
@@ -1043,14 +1445,15 @@ export const KeetloSmartEditor = ({
       ref={editorContainerRef}
       className={cn(
         "rounded-lg border border-input bg-background shadow-sm",
-        isFullscreen && "fixed inset-0 z-50 rounded-none border-none",
+        isFullscreen &&
+          "overflow-y-auto fixed inset-0 z-50 rounded-none border-none",
         className
       )}
     >
       {/* Main Toolbar */}
       <div className="border-b border-input">
         <Tabs defaultValue="format">
-          <div className="flex items-center justify-between px-2 border-b">
+          <div className="flex items-center justify-between px-2 border-b flex-wrap">
             <TabsList className="justify-start rounded-none bg-transparent p-0">
               <TabsTrigger
                 value="format"
@@ -1522,42 +1925,41 @@ export const KeetloSmartEditor = ({
                   </TooltipTrigger>
                   <TooltipContent>Justify</TooltipContent>
                 </Tooltip>
+              </div>
 
-                <div></div>
-                <div className="flex items-center gap-1 mr-3">
-                  {["h1", "h2", "h3", "h4", "h5", "h6"].map((level) => (
-                    <Tooltip key={level}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-8 w-8",
-                            editor.isActive("heading", {
+              <div className="flex items-center gap-1 mr-3">
+                {["h1", "h2", "h3", "h4", "h5", "h6"].map((level) => (
+                  <Tooltip key={level}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "h-8 w-8",
+                          editor.isActive("heading", {
+                            level: parseInt(level.replace("h", "")),
+                          }) && "bg-accent text-accent-foreground"
+                        )}
+                        onClick={() =>
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({
                               level: parseInt(level.replace("h", "")),
-                            }) && "bg-accent text-accent-foreground"
-                          )}
-                          onClick={() =>
-                            editor
-                              .chain()
-                              .focus()
-                              .toggleHeading({
-                                level: parseInt(level.replace("h", "")),
-                              })
-                              .run()
-                          }
-                        >
-                          <span className="text-[12px] font-bold uppercase">
-                            {level}
-                          </span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Heading {level.toUpperCase()}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
+                            })
+                            .run()
+                        }
+                      >
+                        <span className="text-[12px] font-bold uppercase">
+                          {level}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Heading {level.toUpperCase()}
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
               </div>
             </TooltipProvider>
           </TabsContent>
@@ -2037,20 +2439,6 @@ export const KeetloSmartEditor = ({
                   </TooltipTrigger>
                   <TooltipContent>Copy Text</TooltipContent>
                 </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => editor.chain().focus().cut().run()}
-                    >
-                      <Scissors className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Cut</TooltipContent>
-                </Tooltip>
               </div>
 
               <div className="ml-auto">
@@ -2086,13 +2474,13 @@ export const KeetloSmartEditor = ({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() =>
-                        alert(
-                          "Spell check would be integrated with a backend service"
-                        )
-                      }
+                      onClick={checkSpelling}
                     >
-                      <Spellcheck className="h-4 w-4" />
+                      {loadingCheck ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
+                      ) : (
+                        <Spellcheck className="h-4 w-4" />
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Spell Check</TooltipContent>
@@ -2104,16 +2492,35 @@ export const KeetloSmartEditor = ({
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() =>
-                        alert(
-                          "Grammar check would be integrated with a backend service"
-                        )
-                      }
+                      onClick={checkGrammar}
                     >
-                      <Wand2 className="h-4 w-4" />
+                      {loadingGrammar ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
+                      ) : (
+                        <Wand2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Grammar Check</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={autoFixErrors}
+                      disabled={loadingAutoFix}
+                    >
+                      {loadingAutoFix ? (
+                        <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
+                      ) : (
+                        <span className="text-xs font-semibold">Fix</span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Auto Fix Errors</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
@@ -2309,7 +2716,9 @@ export const KeetloSmartEditor = ({
       {/* Editor Content */}
       <div className="relative">
         {showSourceCode ? (
-          <div className="min-h-[250px] p-4 focus-within:ring-1 focus-within:ring-ring">
+          <div
+            className={`min-h-[250px] p-4 focus-within:ring-1 focus-within:ring-ring`}
+          >
             <div className="flex justify-between mb-2">
               <Label htmlFor="source-code">HTML Source</Label>
               <div className="space-x-2">
@@ -2335,7 +2744,21 @@ export const KeetloSmartEditor = ({
         ) : (
           <EditorContent
             editor={editor}
-            className="min-h-[250px] p-4 focus-within:ring-1 focus-within:ring-ring"
+            className={cn(
+              "p-4 focus-within:ring-1 focus-within:ring-ring",
+              className
+            )}
+            style={{
+              ...(isFullscreen
+                ? {
+                    minHeight: "70dvh",
+                  } // no limit when fullscreen
+                : {
+                    minHeight: limitRows ? `${limitRows * 24}px` : "250px",
+                    maxHeight: limitRows ? `${limitRows * 24}px` : undefined,
+                    overflowY: limitRows ? "auto" : undefined,
+                  }),
+            }}
           />
         )}
 
@@ -2393,7 +2816,7 @@ export const KeetloSmartEditor = ({
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs"
-            onClick={() => alert("Settings would open here")}
+            onClick={() => setSettingsDialogOpen(true)}
           >
             <Settings className="h-3 w-3 mr-1" />
             Settings
@@ -2401,35 +2824,121 @@ export const KeetloSmartEditor = ({
         </div>
       </div>
 
+      {/* Image Dialog */}
+      <ImageDialog
+        open={imageDialogOpen}
+        onOpenChange={setImageDialogOpen}
+        imageUrl={imageUrl}
+        imageWidth={imageWidth}
+        imageHeight={imageHeight}
+        imageAlt={imageAlt}
+        imageTitle={imageTitle}
+        imageAlignment={imageAlignment}
+        setImageWidth={setImageWidth}
+        setImageHeight={setImageHeight}
+        setImageAlt={setImageAlt}
+        setImageTitle={setImageTitle}
+        setImageAlignment={setImageAlignment}
+        insertCustomImage={insertCustomImage}
+        resetImageForm={resetImageForm}
+      />
+
       {/* Template Dialog */}
-      <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+      <TemplateDialog
+        templateDialogOpen={templateDialogOpen}
+        setTemplateDialogOpen={setTemplateDialogOpen}
+        templates={templates}
+        applyTemplate={applyTemplate}
+      />
+
+      <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Templates</DialogTitle>
+            <DialogTitle>Editor Settings</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {templates.map((template, index) => (
-              <Card
-                key={index}
-                className="cursor-pointer hover:bg-accent"
-                onClick={() => applyTemplate(template)}
-              >
-                <CardContent className="p-4">
-                  <h3 className="font-medium">{template.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {template.name === "Blank Document"
-                      ? "Start with a clean document"
-                      : `Template for ${template.name.toLowerCase()}`}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Default Font</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a font" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fontFamilyOptions.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      <span style={{ fontFamily: font.value }}>
+                        {font.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Default Font Size</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose size" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fontSizeOptions.map((size) => (
+                    <SelectItem key={size.value} value={size.value}>
+                      {size.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 flex gap-2 items-end">
+              <Label>Enable Spell Check</Label>
+              <Checkbox
+                checked={true} // or your state
+                onCheckedChange={(checked) =>
+                  console.log("SpellCheck enabled:", checked)
+                }
+              />
+            </div>
+
+            <div className="space-y-2 flex gap-2 items-end">
+              <Label>Enable Grammar Check</Label>
+              <Checkbox
+                checked={true} // or your state
+                onCheckedChange={(checked) =>
+                  console.log("GrammarCheck enabled:", checked)
+                }
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setSettingsDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => setSettingsDialogOpen(false)}>Save</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Add the ImageDialog component */}
-      <ImageDialog />
+      {hoveredError && (
+        <div
+          className="fixed z-50 bg-background border border-border text-sm rounded-md p-2 shadow-md"
+          style={{
+            left: hoveredPosition.x,
+            top: hoveredPosition.y + 8,
+            transform: "translateX(-50%)",
+            whiteSpace: "pre-wrap",
+            maxWidth: "300px",
+          }}
+        >
+          {hoveredError}
+        </div>
+      )}
 
       {/* Add custom styles for the editor */}
       <style jsx global>{`
@@ -2566,6 +3075,32 @@ export const KeetloSmartEditor = ({
           background-color: #0ea5e9;
           border-radius: 50%;
           cursor: nwse-resize;
+        }
+
+        .ProseMirror img[data-align="center"] {
+          display: block;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .ProseMirror img[data-align="left"] {
+          float: left;
+          margin-right: 1rem;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .ProseMirror img[data-align="right"] {
+          float: right;
+          margin-left: 1rem;
+          margin-top: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .ProseMirror .grammar-error {
+          text-decoration: underline red wavy;
+          cursor: help;
+          position: relative;
         }
       `}</style>
     </div>

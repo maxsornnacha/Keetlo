@@ -657,9 +657,10 @@ export const TemplateDialog = ({
 );
 
 export const KeetloSmartEditor = ({
+  editorId = "default",
   defaultValue = "",
-  setValue = "",
-  placeholder = "Start writing...",
+  setValue = {},
+  placeholder = "",
   className = "",
   limitRows = 6,
 }) => {
@@ -703,10 +704,20 @@ export const KeetloSmartEditor = ({
   const [loadingCheck, setLoadingCheck] = useState(false);
   const [loadingAutoFix, setLoadingAutoFix] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [settingsSavedDialogOpen, setSettingsSavedDialogOpen] = useState(false);
 
   const [hoveredError, setHoveredError] = useState(null);
   const [hoveredPosition, setHoveredPosition] = useState({ x: 0, y: 0 });
   const grammarDecorationsRef = useRef<Decoration[]>([]);
+
+  const [settings, setSettings] = useState({
+    fontFamily: "",
+    fontSize: "",
+    enableSpellCheck: false,
+    enableGrammarCheck: false,
+    enableAutoFixErrorsCheck: false,
+  });
 
   useEffect(() => {
     const body = document.body;
@@ -858,6 +869,28 @@ export const KeetloSmartEditor = ({
       HorizontalRule,
     ],
     content: defaultValue,
+    onCreate: ({ editor }) => {
+      const saved = localStorage.getItem(`keetloEditorSettings-${editorId}`);
+      if (saved) {
+        const loadedSettings = JSON.parse(saved);
+        setSettings(loadedSettings);
+
+        // Always start fresh focus for each chain!
+        if (loadedSettings.fontFamily) {
+          editor.chain().focus().setFontFamily(loadedSettings.fontFamily).run();
+        }
+
+        if (loadedSettings.fontSize) {
+          (editor.chain() as any)
+            .focus()
+            .setFontSize(loadedSettings.fontSize)
+            .insertContent(" ") // 👈 tiny space to "hold" the mark
+            .run();
+        }
+      }
+
+      setLoadingSettings(false);
+    },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       setValue?.(html);
@@ -1376,6 +1409,29 @@ export const KeetloSmartEditor = ({
     }
   };
 
+  const handleSaveSettings = () => {
+    localStorage.setItem(
+      `keetloEditorSettings-${editorId}`,
+      JSON.stringify(settings)
+    );
+    setSettingsDialogOpen(false);
+
+    if (editor) {
+      if (settings.fontFamily) {
+        editor.chain().focus().setFontFamily(settings.fontFamily).run();
+      }
+      if (settings.fontSize) {
+        editor
+          .chain()
+          .focus()
+          .setMark("textStyle", { fontSize: settings.fontSize })
+          .run();
+      }
+    }
+
+    setSettingsSavedDialogOpen(true);
+  };
+
   const handlePrint = () => {
     const content = editor.getHTML();
     const printWindow = window.open("", "_blank");
@@ -1438,7 +1494,7 @@ export const KeetloSmartEditor = ({
     URL.revokeObjectURL(url);
   };
 
-  if (!editor) return null;
+  if (!editor || loadingSettings) return null;
 
   return (
     <div
@@ -2475,6 +2531,7 @@ export const KeetloSmartEditor = ({
                       size="icon"
                       className="h-8 w-8"
                       onClick={checkSpelling}
+                      disabled={!settings.enableSpellCheck}
                     >
                       {loadingCheck ? (
                         <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
@@ -2493,6 +2550,7 @@ export const KeetloSmartEditor = ({
                       size="icon"
                       className="h-8 w-8"
                       onClick={checkGrammar}
+                      disabled={!settings.enableGrammarCheck}
                     >
                       {loadingGrammar ? (
                         <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
@@ -2511,7 +2569,9 @@ export const KeetloSmartEditor = ({
                       size="icon"
                       className="h-8 w-8"
                       onClick={autoFixErrors}
-                      disabled={loadingAutoFix}
+                      disabled={
+                        loadingAutoFix || !settings.enableAutoFixErrorsCheck
+                      }
                     >
                       {loadingAutoFix ? (
                         <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full" />
@@ -2803,15 +2863,50 @@ export const KeetloSmartEditor = ({
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <Button
+          {/* <Button
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs"
-            onClick={() => alert("Help documentation would open here")}
+            onClick={() => {
+              alert(`
+          📖 Keetlo Smart Editor - Quick Help:
+          
+          🔹 Formatting:
+          - Bold: Ctrl+B
+          - Italic: Ctrl+I
+          - Underline: Ctrl+U
+          - Strikethrough: Use the toolbar
+          
+          🔹 Insert:
+          - Image upload (toolbar button)
+          - Links: Click link button or Ctrl+K
+          - YouTube: Insert YouTube embed link
+          - Table: Insert customizable tables
+          
+          🔹 Shortcuts:
+          - Find: Ctrl+F
+          - Replace: Ctrl+H
+          - Save (simulate): Ctrl+S
+          - Undo: Ctrl+Z
+          - Redo: Ctrl+Shift+Z
+          
+          🔹 Other Features:
+          - Spell Check, Grammar Check, and Auto Fix (if enabled)
+          - Templates (for quick document creation)
+          - View/Edit Source Code (HTML)
+          - Fullscreen Mode
+          - Export as HTML or Text
+          - Print Document
+          
+          ✨ Tip: You can also customize fonts, sizes, colors, and highlight text.
+          
+          Happy Writing! 🚀
+              `)
+            }}
           >
             <HelpCircle className="h-3 w-3 mr-1" />
             Help
-          </Button>
+          </Button> */}
           <Button
             variant="ghost"
             size="sm"
@@ -2858,9 +2953,15 @@ export const KeetloSmartEditor = ({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {/* Default Font */}
             <div className="space-y-2">
               <Label>Default Font</Label>
-              <Select>
+              <Select
+                value={settings.fontFamily}
+                onValueChange={(value) =>
+                  setSettings((prev) => ({ ...prev, fontFamily: value }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose a font" />
                 </SelectTrigger>
@@ -2876,9 +2977,15 @@ export const KeetloSmartEditor = ({
               </Select>
             </div>
 
+            {/* Default Font Size */}
             <div className="space-y-2">
               <Label>Default Font Size</Label>
-              <Select>
+              <Select
+                value={settings.fontSize}
+                onValueChange={(value) =>
+                  setSettings((prev) => ({ ...prev, fontSize: value }))
+                }
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Choose size" />
                 </SelectTrigger>
@@ -2892,24 +2999,50 @@ export const KeetloSmartEditor = ({
               </Select>
             </div>
 
-            <div className="space-y-2 flex gap-2 items-end">
-              <Label>Enable Spell Check</Label>
+            {/* Spell Check Toggle */}
+            <div className="flex items-center space-x-2">
               <Checkbox
-                checked={true} // or your state
+                id="spellcheck"
+                checked={settings.enableSpellCheck}
                 onCheckedChange={(checked) =>
-                  console.log("SpellCheck enabled:", checked)
+                  setSettings((prev) => ({
+                    ...prev,
+                    enableSpellCheck: !!checked,
+                  }))
                 }
               />
+              <Label htmlFor="spellcheck">
+                {settings.enableSpellCheck} Enable Spell Check
+              </Label>
             </div>
 
-            <div className="space-y-2 flex gap-2 items-end">
-              <Label>Enable Grammar Check</Label>
+            {/* Grammar Check Toggle */}
+            <div className="flex items-center space-x-2">
               <Checkbox
-                checked={true} // or your state
+                id="grammarcheck"
+                checked={settings.enableGrammarCheck}
                 onCheckedChange={(checked) =>
-                  console.log("GrammarCheck enabled:", checked)
+                  setSettings((prev) => ({
+                    ...prev,
+                    enableGrammarCheck: !!checked,
+                  }))
                 }
               />
+              <Label htmlFor="grammarcheck">Enable Grammar Check</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="grammarcheck"
+                checked={settings.enableAutoFixErrorsCheck}
+                onCheckedChange={(checked) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    enableAutoFixErrorsCheck: !!checked,
+                  }))
+                }
+              />
+              <Label htmlFor="grammarcheck">Enable Auto Fix Error</Label>
             </div>
           </div>
 
@@ -2920,7 +3053,40 @@ export const KeetloSmartEditor = ({
             >
               Cancel
             </Button>
-            <Button onClick={() => setSettingsDialogOpen(false)}>Save</Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSettings({
+                  fontFamily: "",
+                  fontSize: "",
+                  enableSpellCheck: false,
+                  enableGrammarCheck: false,
+                  enableAutoFixErrorsCheck: false,
+                });
+              }}
+            >
+              Reset to Default
+            </Button>
+            <Button onClick={handleSaveSettings}>Save</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={settingsSavedDialogOpen}
+        onOpenChange={setSettingsSavedDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>✅ Settings Saved</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            Your editor settings have been updated successfully.
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={() => setSettingsSavedDialogOpen(false)}>
+              OK
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

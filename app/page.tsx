@@ -5,7 +5,8 @@ import { KeetloSmartEditor } from "@/components/keetlo-smart-editor"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Home() {
-  const [content, setContent] = useState("<p>Welcome to the enhanced Keetlo Text Editor!</p>")
+  // const [content, setContent] = useState("<p>Welcome to the enhanced Keetlo Text Editor!</p>")
+  const [content, setContent] = useState("")
 
   return (
     <main className="container mx-auto py-10 px-4">
@@ -16,6 +17,7 @@ export default function Home() {
         </CardHeader>
         <CardContent>
           <KeetloSmartEditor
+           editorId = "1"
            defaultValue={content} 
            setValue={setContent} 
            placeholder="Start writing something amazing..." 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { KeetloSmartEditor } from "@/components/keetlo-smart-editor"
+import KeetloSmartEditor from "keetlo-smart-editor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function Home() {
@@ -20,7 +20,7 @@ export default function Home() {
            editorId = "1"
            defaultValue={content} 
            setValue={setContent} 
-           placeholder="Start writing something amazing..." 
+           placeholder="Welcome to Keetlo Smart Editor! You can start writing something amazing here." 
            limitRows={10}
            />
           <div className="mt-8">
